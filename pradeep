@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SWAN — Building Information in Real Virtuality</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Serif+Display:ital@0;1&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --black: #050505;
+    --white: #f5f5f0;
+    --gray: #888880;
+    --mid: #1a1a1a;
+    --border: #2a2a2a;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--black);
+    color: var(--white);
+    font-family: 'Space Mono', monospace;
+    overflow-x: hidden;
+    cursor: none;
+  }
+
+  /* Custom cursor */
+  .cursor {
+    width: 12px; height: 12px;
+    background: var(--white);
+    border-radius: 50%;
+    position: fixed;
+    pointer-events: none;
+    z-index: 9999;
+    transition: transform 0.1s ease;
+    mix-blend-mode: difference;
+  }
+  .cursor-ring {
+    width: 40px; height: 40px;
+    border: 1px solid var(--white);
+    border-radius: 50%;
+    position: fixed;
+    pointer-events: none;
+    z-index: 9998;
+    transition: all 0.15s ease;
+    mix-blend-mode: difference;
+    transform: translate(-50%, -50%);
+  }
+
+  /* NAV */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0;
+    z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 24px 60px;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.3s, background 0.3s;
+  }
+  nav.scrolled {
+    background: rgba(5,5,5,0.95);
+    border-color: var(--border);
+    backdrop-filter: blur(10px);
+  }
+  .nav-logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 52px;
+    letter-spacing: 8px;
+    color: var(--white);
+    text-decoration: none;
+  }
+  .nav-links { display: flex; gap: 40px; list-style: none; }
+  .nav-links a {
+    font-size: 15px; letter-spacing: 3px; text-transform: uppercase;
+    color: #d8d8d0; text-decoration: none;
+    transition: color 0.2s;
+    font-weight: 700;
+  }
+  .nav-links a:hover { color: #ffffff; }
+
+  /* HERO */
+  #home {
+    min-height: 100vh;
+    display: flex; flex-direction: column; justify-content: flex-end;
+    padding: 0 60px 80px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero-bg-text {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(100px, 22vw, 340px);
+    letter-spacing: -5px;
+    color: transparent;
+    -webkit-text-stroke: 1px rgba(255,255,255,0.04);
+    pointer-events: none;
+    white-space: nowrap;
+    user-select: none;
+  }
+  .hero-tag {
+    font-size: 14px; letter-spacing: 4px; text-transform: uppercase;
+    color: var(--gray);
+    margin-bottom: 24px;
+    opacity: 0; animation: fadeUp 0.8s 0.2s forwards;
+  }
+  .hero-headline {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(48px, 7vw, 110px);
+    line-height: 0.92;
+    font-weight: 400;
+    max-width: 900px;
+    opacity: 0; animation: fadeUp 0.8s 0.4s forwards;
+  }
+  .hero-headline em {
+    font-style: italic;
+    color: var(--gray);
+  }
+  .hero-bottom {
+    display: flex; align-items: flex-end; justify-content: space-between;
+    margin-top: 60px;
+    opacity: 0; animation: fadeUp 0.8s 0.6s forwards;
+  }
+  .hero-desc {
+    font-size: 16px; line-height: 1.9; color: var(--gray);
+    max-width: 400px;
+  }
+  .hero-cta {
+    display: inline-flex; align-items: center; gap: 12px;
+    background: var(--white); color: var(--black);
+    padding: 20px 40px;
+    font-family: 'Space Mono', monospace;
+    font-size: 14px; letter-spacing: 3px; text-transform: uppercase;
+    text-decoration: none;
+    transition: background 0.2s, color 0.2s, transform 0.2s;
+  }
+  .hero-cta:hover { background: var(--gray); transform: translateY(-2px); }
+
+  .scroll-indicator {
+    position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%);
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    opacity: 0; animation: fadeIn 1s 1.2s forwards;
+  }
+  .scroll-indicator span { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: var(--gray); }
+  .scroll-line {
+    width: 1px; height: 60px; background: var(--border);
+    position: relative; overflow: hidden;
+  }
+  .scroll-line::after {
+    content: '';
+    position: absolute; top: -100%; left: 0; right: 0; height: 100%;
+    background: var(--white);
+    animation: scrollDown 1.5s 1.5s infinite;
+  }
+
+  /* MARQUEE */
+  .marquee-strip {
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    padding: 20px 0;
+    overflow: hidden;
+    background: var(--mid);
+  }
+  .marquee-track {
+    display: flex; gap: 60px; white-space: nowrap;
+    animation: marqueeScroll 20s linear infinite;
+  }
+  .marquee-item {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px; letter-spacing: 6px;
+    color: var(--gray); flex-shrink: 0;
+  }
+  .marquee-dot { color: var(--white); margin: 0 10px; }
+
+  /* ABOUT */
+  #about {
+    padding: 140px 60px;
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 100px; align-items: start;
+  }
+  .section-label {
+    font-size: 13px; letter-spacing: 4px; text-transform: uppercase;
+    color: var(--gray); margin-bottom: 16px;
+    display: flex; align-items: center; gap: 16px;
+  }
+  .section-label::before {
+    content: ''; width: 30px; height: 1px; background: var(--gray);
+  }
+  .about-heading {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(36px, 4vw, 64px);
+    line-height: 1.05;
+    font-weight: 400;
+  }
+  .about-heading em { font-style: italic; color: var(--gray); }
+  .about-right { padding-top: 60px; }
+  .about-text {
+    font-size: 16px; line-height: 2; color: var(--gray);
+    margin-bottom: 40px;
+  }
+  .about-stats {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 1px; background: var(--border);
+    border: 1px solid var(--border);
+    margin-top: 60px;
+  }
+  .stat-box {
+    background: var(--black); padding: 32px;
+  }
+  .stat-num {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 56px; line-height: 1;
+    color: var(--white);
+  }
+  .stat-label {
+    font-size: 13px; letter-spacing: 3px; text-transform: uppercase;
+    color: var(--gray); margin-top: 8px;
+  }
+
+  /* SERVICES */
+  #services {
+    padding: 140px 60px;
+    border-top: 1px solid var(--border);
+  }
+  .services-header {
+    display: flex; justify-content: space-between;
+    align-items: flex-end; margin-bottom: 80px;
+  }
+  .services-heading {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(36px, 4vw, 64px);
+    font-weight: 400; line-height: 1.05;
+  }
+  .services-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 1px; background: var(--border);
+    border: 1px solid var(--border);
+  }
+  .service-card {
+    background: var(--black);
+    padding: 48px 36px;
+    transition: background 0.3s;
+    position: relative; overflow: hidden;
+  }
+  .service-card::after {
+    content: '';
+    position: absolute; bottom: 0; left: 0; right: 0; height: 2px;
+    background: var(--white);
+    transform: scaleX(0); transform-origin: left;
+    transition: transform 0.4s ease;
+  }
+  .service-card:hover { background: #0f0f0f; }
+  .service-card:hover::after { transform: scaleX(1); }
+  .service-num {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 72px; color: rgba(255,255,255,0.06);
+    line-height: 1; margin-bottom: 24px;
+  }
+  .service-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 24px; font-weight: 400;
+    margin-bottom: 16px;
+  }
+  .service-desc {
+    font-size: 15px; line-height: 1.9; color: var(--gray);
+  }
+  .service-tags {
+    display: flex; flex-wrap: wrap; gap: 8px; margin-top: 24px;
+  }
+  .tag {
+    font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
+    border: 1px solid var(--border);
+    padding: 7px 14px; color: var(--gray);
+  }
+
+  /* PROJECTS */
+  #projects {
+    padding: 140px 60px;
+    border-top: 1px solid var(--border);
+  }
+  .projects-header {
+    margin-bottom: 80px;
+  }
+  .projects-heading {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(36px, 4vw, 64px);
+    font-weight: 400;
+  }
+  .projects-list { display: flex; flex-direction: column; }
+  .project-item {
+    display: grid; grid-template-columns: 80px 1fr 200px 200px;
+    align-items: center;
+    padding: 32px 0;
+    border-bottom: 1px solid var(--border);
+    gap: 40px;
+    transition: padding 0.3s;
+    position: relative;
+  }
+  .project-item:first-child { border-top: 1px solid var(--border); }
+  .project-item:hover { padding-left: 20px; }
+  .project-item::before {
+    content: '';
+    position: absolute; left: 0; top: 0; bottom: 0; width: 2px;
+    background: var(--white);
+    transform: scaleY(0); transform-origin: top;
+    transition: transform 0.3s;
+  }
+  .project-item:hover::before { transform: scaleY(1); }
+  .project-index {
+    font-size: 11px; letter-spacing: 2px; color: var(--gray);
+    font-family: 'Bebas Neue', sans-serif; font-size: 20px;
+  }
+  .project-name {
+    font-family: 'DM Serif Display', serif;
+    font-size: 28px; font-weight: 400;
+  }
+  .project-location {
+    font-size: 14px; letter-spacing: 2px; color: var(--gray);
+    text-transform: uppercase;
+  }
+  .project-scope {
+    font-size: 14px; color: var(--gray);
+    text-align: right;
+  }
+
+  /* CONTACT */
+  #contact {
+    padding: 140px 60px;
+    border-top: 1px solid var(--border);
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 100px;
+  }
+  .contact-left {}
+  .contact-heading {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(36px, 4vw, 72px);
+    font-weight: 400; line-height: 1.05;
+    margin-bottom: 40px;
+  }
+  .contact-heading em { font-style: italic; color: var(--gray); }
+  .contact-info { display: flex; flex-direction: column; gap: 20px; margin-top: 60px; }
+  .contact-info-item { display: flex; flex-direction: column; gap: 4px; }
+  .contact-info-label {
+    font-size: 13px; letter-spacing: 3px; text-transform: uppercase; color: #c0c0b8;
+  }
+  .contact-info-val {
+    font-size: 19px; color: #ffffff;
+  }
+  .contact-info-val a { color: var(--white); text-decoration: none; }
+  .contact-info-val a:hover { color: var(--gray); }
+
+  /* FORM */
+  .contact-form { display: flex; flex-direction: column; gap: 0; }
+  .form-row {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 1px;
+    background: #3a3a3a;
+    border: 1px solid #3a3a3a;
+    margin-bottom: 1px;
+  }
+  .form-row.full { grid-template-columns: 1fr; }
+  .form-field {
+    background: var(--black);
+    padding: 24px 24px 16px;
+    position: relative;
+  }
+  .form-field label {
+    display: block;
+    font-size: 13px; letter-spacing: 3px; text-transform: uppercase;
+    color: #c8c8c0; margin-bottom: 10px;
+    font-weight: 700;
+  }
+  .form-field input, .form-field textarea, .form-field select {
+    background: transparent;
+    border: none; outline: none;
+    color: #ffffff;
+    font-family: 'Space Mono', monospace;
+    font-size: 18px;
+    width: 100%;
+    resize: none;
+  }
+  .form-field textarea { min-height: 120px; }
+  .form-field select option { background: var(--black); color: var(--white); }
+  .form-field input::placeholder, .form-field textarea::placeholder {
+    color: #555550;
+  }
+  .form-field::after {
+    content: '';
+    position: absolute; bottom: 0; left: 24px; right: 24px; height: 1px;
+    background: #3a3a3a;
+    transition: background 0.2s;
+  }
+  .form-field:focus-within::after { background: #ffffff; }
+  .submit-btn {
+    margin-top: 24px;
+    background: var(--white); color: var(--black);
+    border: none; padding: 22px 48px;
+    font-family: 'Space Mono', monospace;
+    font-size: 16px; letter-spacing: 3px; text-transform: uppercase;
+    cursor: none;
+    transition: background 0.2s, transform 0.2s;
+    align-self: flex-start;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .submit-btn:hover { background: #ccc; transform: translateY(-2px); }
+  .submit-btn .arrow { font-size: 16px; transition: transform 0.2s; }
+  .submit-btn:hover .arrow { transform: translateX(4px); }
+
+  /* FOOTER */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 40px 60px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .footer-logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 24px; letter-spacing: 5px; color: var(--white);
+  }
+  .footer-sub {
+    font-size: 13px; letter-spacing: 2px; color: var(--gray);
+    text-transform: uppercase;
+  }
+  .footer-copy {
+    font-size: 13px; color: var(--gray);
+  }
+
+  /* FORM SUCCESS */
+  .form-success {
+    display: none;
+    padding: 40px;
+    border: 1px solid var(--border);
+    text-align: center;
+  }
+  .form-success.visible { display: block; }
+  .form-success h3 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 32px; margin-bottom: 12px;
+  }
+  .form-success p { color: var(--gray); font-size: 13px; }
+
+  /* KEYFRAMES */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeIn {
+    to { opacity: 1; }
+  }
+  @keyframes scrollDown {
+    0% { top: -100%; }
+    100% { top: 100%; }
+  }
+  @keyframes marqueeScroll {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+
+  /* RESPONSIVE */
+  @media (max-width: 900px) {
+    nav { padding: 20px 24px; }
+    .nav-links { display: none; }
+    #home, #services, #projects, #about, footer { padding-left: 24px; padding-right: 24px; }
+    #about { grid-template-columns: 1fr; gap: 40px; }
+    .services-grid { grid-template-columns: 1fr; }
+    #contact { grid-template-columns: 1fr; gap: 60px; padding: 80px 24px; }
+    .project-item { grid-template-columns: 40px 1fr; gap: 20px; }
+    .project-location, .project-scope { display: none; }
+    footer { flex-direction: column; gap: 16px; text-align: center; }
+  }
+</style>
+</head>
+<body>
+
+<div class="cursor" id="cursor"></div>
+<div class="cursor-ring" id="cursorRing"></div>
+
+<!-- NAV -->
+<nav id="mainNav">
+  <a href="#home" class="nav-logo">SWAN</a>
+  <ul class="nav-links">
+    <li><a href="#home">Home</a></li>
+    <li><a href="#about">About</a></li>
+    <li><a href="#services">Services</a></li>
+    <li><a href="#projects">Projects</a></li>
+    <li><a href="#contact">Contact</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<section id="home">
+  <div class="hero-bg-text">BIM</div>
+  <div class="hero-tag">Building Information in Real Virtuality</div>
+  <h1 class="hero-headline">Where Data<br>Meets <em>Design</em></h1>
+  <div class="hero-bottom">
+    <p class="hero-desc">SWAN bridges designers, clients, and architects—delivering intelligent BIM solutions that empower teams to build smarter, faster, and more sustainably.</p>
+    <a href="#projects" class="hero-cta">View Projects →</a>
+  </div>
+  <div class="scroll-indicator">
+    <span>Scroll</span>
+    <div class="scroll-line"></div>
+  </div>
+</section>
+
+<!-- MARQUEE -->
+<div class="marquee-strip">
+  <div class="marquee-track">
+    <span class="marquee-item">BIM Modelling <span class="marquee-dot">◆</span></span>
+    <span class="marquee-item">Facade Engineering <span class="marquee-dot">◆</span></span>
+    <span class="marquee-item">Parametric Design <span class="marquee-dot">◆</span></span>
+    <span class="marquee-item">Dynamo Scripting <span class="marquee-dot">◆</span></span>
+    <span class="marquee-item">LOD 300–500 <span class="marquee-dot">◆</span></span>
+    <span class="marquee-item">AI Design <span class="marquee-dot">◆</span></span>
+    <span class="marquee-item">VDC Solutions <span class="marquee-dot">◆</span></span>
+    <span class="marquee-item">Clash Detection <span class="marquee-dot">◆</span></span>
+    <!-- repeat for seamless loop -->
+    <span class="marquee-item">BIM Modelling <span class="marquee-dot">◆</span></span>
+    <span class="marquee-item">Facade Engineering <span class="marquee-dot">◆</span></span>
+    <span class="marquee-item">Parametric Design <span class="marquee-dot">◆</span></span>
+    <span class="marquee-item">Dynamo Scripting <span class="marquee-dot">◆</span></span>
+    <span class="marquee-item">LOD 300–500 <span class="marquee-dot">◆</span></span>
+    <span class="marquee-item">AI Design <span class="marquee-dot">◆</span></span>
+    <span class="marquee-item">VDC Solutions <span class="marquee-dot">◆</span></span>
+    <span class="marquee-item">Clash Detection <span class="marquee-dot">◆</span></span>
+  </div>
+</div>
+
+<!-- ABOUT -->
+<section id="about">
+  <div class="about-left">
+    <div class="section-label">About Us</div>
+    <h2 class="about-heading">Expert <em>BIM</em><br>Consultants<br>Since 2020</h2>
+    <div class="about-stats">
+      <div class="stat-box">
+        <div class="stat-num">6+</div>
+        <div class="stat-label">Years Experience</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num">50+</div>
+        <div class="stat-label">Projects Delivered</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num">3</div>
+        <div class="stat-label">Countries</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num">LOD<br>500</div>
+        <div class="stat-label">Max Level of Detail</div>
+      </div>
+    </div>
+  </div>
+  <div class="about-right">
+    <p class="about-text">SWAN is a BIM consultancy committed to simplifying construction workflows through intelligent automation and collaborative design. We act as the bridge between designers, clients, and architects—ensuring projects run efficiently from concept to completion.</p>
+    <p class="about-text">From BIM execution plans to supply chain assessments, audits, and training, we empower teams with the right tools, strategies, and technology to deliver excellence. Our consultants oversee budgets, mentor staff, and drive digital innovation.</p>
+    <p class="about-text">Expert in Facade, Architecture, Interior, Structure, and Landscape—powered by parametric modeling, BIM coordination, data insights, AI design, and Dynamo scripting. Based in West Bengal, India, with projects spanning the globe.</p>
+  </div>
+</section>
+
+<!-- SERVICES -->
+<section id="services">
+  <div class="services-header">
+    <div>
+      <div class="section-label">What We Do</div>
+      <h2 class="services-heading">Our Services</h2>
+    </div>
+  </div>
+  <div class="services-grid">
+    <div class="service-card">
+      <div class="service-num">01</div>
+      <h3 class="service-title">BIM Modelling & Coordination</h3>
+      <p class="service-desc">Full-lifecycle BIM model development from LOD 300 to LOD 500 (As-Built). Interdisciplinary coordination, clash detection, and model management across all disciplines.</p>
+      <div class="service-tags">
+        <span class="tag">Revit</span>
+        <span class="tag">Navisworks</span>
+        <span class="tag">LOD 300–500</span>
+      </div>
+    </div>
+    <div class="service-card">
+      <div class="service-num">02</div>
+      <h3 class="service-title">Facade & Architectural Works</h3>
+      <p class="service-desc">Expert modelling of internal and external glazing, façade systems, steel and concrete structures. Detailed shop drawings and fabrication-ready deliverables.</p>
+      <div class="service-tags">
+        <span class="tag">Facade</span>
+        <span class="tag">Glazing</span>
+        <span class="tag">Structure</span>
+      </div>
+    </div>
+    <div class="service-card">
+      <div class="service-num">03</div>
+      <h3 class="service-title">Parametric Design & Dynamo</h3>
+      <p class="service-desc">Custom Dynamo scripting for workflow automation, parametric families, and data-driven design solutions that eliminate repetitive tasks and improve accuracy.</p>
+      <div class="service-tags">
+        <span class="tag">Dynamo</span>
+        <span class="tag">Parametric</span>
+        <span class="tag">Automation</span>
+      </div>
+    </div>
+    <div class="service-card">
+      <div class="service-num">04</div>
+      <h3 class="service-title">BIM Consulting & Strategy</h3>
+      <p class="service-desc">BIM Execution Plans, supply chain assessments, audits, and training programs. We raise BIM's profile across departments and support compliance with industry standards.</p>
+      <div class="service-tags">
+        <span class="tag">BEP</span>
+        <span class="tag">Audit</span>
+        <span class="tag">Training</span>
+      </div>
+    </div>
+    <div class="service-card">
+      <div class="service-num">05</div>
+      <h3 class="service-title">VDC & Smart BIM Integration</h3>
+      <p class="service-desc">Virtual Design & Construction solutions integrating AI design insights with data-driven workflows. Delivering future-ready building solutions for complex projects.</p>
+      <div class="service-tags">
+        <span class="tag">VDC</span>
+        <span class="tag">AI Design</span>
+        <span class="tag">Smart BIM</span>
+      </div>
+    </div>
+    <div class="service-card">
+      <div class="service-num">06</div>
+      <h3 class="service-title">Resource & Lump Sum Contracts</h3>
+      <p class="service-desc">Flexible engagement models: dedicated BIM professionals on monthly resource contracts, or fixed-price lump sum delivery for well-defined project scopes.</p>
+      <div class="service-tags">
+        <span class="tag">Resource</span>
+        <span class="tag">Lump Sum</span>
+        <span class="tag">Flexible</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PROJECTS -->
+<section id="projects">
+  <div class="projects-header">
+    <div class="section-label">Portfolio 2020–2026</div>
+    <h2 class="projects-heading">Featured Projects</h2>
+  </div>
+  <div class="projects-list">
+    <div class="project-item">
+      <span class="project-index">01</span>
+      <span class="project-name">SixSenses Resort</span>
+      <span class="project-location">Triple Bay, KSA</span>
+      <span class="project-scope">LOD 400–500 · 2yrs+</span>
+    </div>
+    <div class="project-item">
+      <span class="project-index">02</span>
+      <span class="project-name">RoseWood Resort</span>
+      <span class="project-location">Triple Bay, KSA</span>
+      <span class="project-scope">LOD 400–500 · 2yrs+</span>
+    </div>
+    <div class="project-item">
+      <span class="project-index">03</span>
+      <span class="project-name">Ciel Tower</span>
+      <span class="project-location">Dubai Marina, UAE</span>
+      <span class="project-scope">LOD 300–500 · 2.5yrs+</span>
+    </div>
+    <div class="project-item">
+      <span class="project-index">04</span>
+      <span class="project-name">Pedestrian Footbridge</span>
+      <span class="project-location">Hong Kong</span>
+      <span class="project-scope">LOD 400 · 1yr+</span>
+    </div>
+  </div>
+</section>
+
+<!-- CONTACT -->
+<section id="contact">
+  <div class="contact-left">
+    <div class="section-label">Get In Touch</div>
+    <h2 class="contact-heading">Let's Build<br><em>Together</em></h2>
+    <p style="font-size:17px;line-height:1.9;color:#b8b8b0;max-width:380px;">Ready to elevate your project with intelligent BIM solutions? Reach out — we'd love to learn about your project and explore how SWAN can help.</p>
+    <div class="contact-info">
+      <div class="contact-info-item">
+        <span class="contact-info-label">Location</span>
+        <span class="contact-info-val">West Bengal, India</span>
+      </div>
+      <div class="contact-info-item">
+        <span class="contact-info-label">Phone</span>
+        <span class="contact-info-val"><a href="tel:+916291733435">+91 6291 733 435</a></span>
+      </div>
+      <div class="contact-info-item">
+        <span class="contact-info-label">Email</span>
+        <span class="contact-info-val"><a href="/cdn-cgi/l/email-protection#d9b0b7bfb699adb6aaaeb8b7f7bab6b4"><span class="__cf_email__" data-cfemail="066f686069467269757167682865696b">[email&#160;protected]</span></a></span>
+      </div>
+      <div class="contact-info-item">
+        <span class="contact-info-label">Website</span>
+        <span class="contact-info-val"><a href="https://www.toswan.com" target="_blank">www.toswan.com</a></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="contact-right">
+    <form id="contactForm" class="contact-form">
+      <div class="form-row">
+        <div class="form-field">
+          <label>First Name</label>
+          <input type="text" placeholder="John" required>
+        </div>
+        <div class="form-field">
+          <label>Last Name</label>
+          <input type="text" placeholder="Doe" required>
+        </div>
+      </div>
+      <div class="form-row full">
+        <div class="form-field">
+          <label>Email Address</label>
+          <input type="email" placeholder="john@company.com" required>
+        </div>
+      </div>
+      <div class="form-row full">
+        <div class="form-field">
+          <label>Company</label>
+          <input type="text" placeholder="Your Company Name">
+        </div>
+      </div>
+      <div class="form-row full">
+        <div class="form-field">
+          <label>Service Interest</label>
+          <select>
+            <option value="">Select a service...</option>
+            <option>BIM Modelling & Coordination</option>
+            <option>Facade & Architectural Works</option>
+            <option>Parametric Design & Dynamo</option>
+            <option>BIM Consulting & Strategy</option>
+            <option>VDC & Smart BIM Integration</option>
+            <option>Resource Contract</option>
+            <option>Lump Sum Contract</option>
+            <option>Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row full">
+        <div class="form-field">
+          <label>Project Details</label>
+          <textarea placeholder="Tell us about your project, timeline, and requirements..."></textarea>
+        </div>
+      </div>
+      <button type="submit" class="submit-btn">
+        Send Message <span class="arrow">→</span>
+      </button>
+    </form>
+    <div class="form-success" id="formSuccess">
+      <h3>Message Sent.</h3>
+      <p>We'll be in touch within 24 hours.</p>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div>
+    <div class="footer-logo">SWAN</div>
+    <div class="footer-sub">Building Information in Real Virtuality</div>
+  </div>
+  <div class="footer-copy">© 2026 SWAN. All rights reserved. www.toswan.com</div>
+</footer>
+
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><!-- WhatsApp Float Button -->
+<a href="https://wa.me/916291733435" target="_blank" class="whatsapp-btn" title="Chat on WhatsApp">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+  </svg>
+</a>
+
+<style>
+  .whatsapp-btn {
+    position: fixed;
+    bottom: 36px;
+    right: 36px;
+    width: 58px; height: 58px;
+    background: #25D366;
+    color: #fff;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    z-index: 999;
+    box-shadow: 0 4px 24px rgba(37,211,102,0.35);
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+    cursor: none;
+  }
+  .whatsapp-btn:hover {
+    transform: scale(1.12) translateY(-3px);
+    box-shadow: 0 8px 32px rgba(37,211,102,0.55);
+  }
+  .whatsapp-btn svg {
+    width: 28px; height: 28px;
+  }
+  /* Pulse ring */
+  .whatsapp-btn::before {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    border-radius: 50%;
+    border: 2px solid rgba(37,211,102,0.45);
+    animation: waPulse 2s ease-out infinite;
+  }
+  @keyframes waPulse {
+    0%   { transform: scale(1); opacity: 1; }
+    100% { transform: scale(1.55); opacity: 0; }
+  }
+</style>
+
+<script>
+  // Custom cursor
+  const cursor = document.getElementById('cursor');
+  const ring = document.getElementById('cursorRing');
+  let mouseX = 0, mouseY = 0, ringX = 0, ringY = 0;
+
+  document.addEventListener('mousemove', e => {
+    mouseX = e.clientX; mouseY = e.clientY;
+    cursor.style.left = mouseX - 6 + 'px';
+    cursor.style.top = mouseY - 6 + 'px';
+  });
+
+  function animateRing() {
+    ringX += (mouseX - ringX) * 0.12;
+    ringY += (mouseY - ringY) * 0.12;
+    ring.style.left = ringX + 'px';
+    ring.style.top = ringY + 'px';
+    requestAnimationFrame(animateRing);
+  }
+  animateRing();
+
+  document.querySelectorAll('a, button, .service-card, .project-item').forEach(el => {
+    el.addEventListener('mouseenter', () => ring.style.transform = 'translate(-50%,-50%) scale(1.8)');
+    el.addEventListener('mouseleave', () => ring.style.transform = 'translate(-50%,-50%) scale(1)');
+  });
+
+  // Nav scroll
+  const nav = document.getElementById('mainNav');
+  window.addEventListener('scroll', () => {
+    nav.classList.toggle('scrolled', window.scrollY > 60);
+  });
+
+  // Form
+  document.getElementById('contactForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    this.style.display = 'none';
+    document.getElementById('formSuccess').classList.add('visible');
+  });
+
+  // Scroll reveal
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.style.opacity = '1';
+        entry.target.style.transform = 'translateY(0)';
+      }
+    });
+  }, { threshold: 0.1 });
+
+  document.querySelectorAll('.service-card, .project-item, .stat-box').forEach((el, i) => {
+    el.style.opacity
